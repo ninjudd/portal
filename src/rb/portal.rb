@@ -2,7 +2,9 @@ require 'socket'
 require 'pp'
 
 class Portal
-  class ProtocolError < StandardError; end
+  class Error < StandardError; end
+  class ReadError     < Error; end
+  class ProtocolError < Error; end
   RESULT_WAIT = 0.01
 
   def initialize(port, host = "localhost")
@@ -10,24 +12,20 @@ class Portal
     @contexts = {}
     Thread.new do
       while (message = receive_message)
-        id, type, form = message
-        if [":stdout", ":stderr"].include?(type)
+        id, type, content = message
+        if ["stdout", "stderr"].include?(type)
           out = context(id)[type][1]
-          out.write(form)
+          out.write(content)
           out.flush
         else
-          context(id)[:results] << [type, form]
+          context(id)[:results] << [type, content]
         end
       end
     end
   end
 
-  def stringify(obj)
-    obj.kind_of?(Symbol) ? ":#{obj}" : obj.to_s
-  end
-
-  def send_message(id, type, form)
-    message = "#{stringify(id)} #{stringify(type)} #{form}"
+  def send_message(id, type, content)
+    message = "#{id} #{type} #{content}"
     @socket.write("#{message.size}:")
     @socket.write(message)
     @socket.write(",")
@@ -40,9 +38,9 @@ class Portal
       raise ProtocolError.new("Message size must be an integer, found #{c.chr}") unless (?0..?9).include?(c)
       size << c
     end
-    id, type, form = @socket.read(size.to_i).split(/\s+/, 3)
+    message = @socket.read(size.to_i).split(/\s+/, 3)
     raise ProtocolError.new("Message must be followed by comma") unless @socket.getc == ?,
-    [id, type, form]
+    message
   end
 
   def context(id)
@@ -62,15 +60,19 @@ class Portal
   end
 
   def eval(form, id = @id || rand)
-    id = id.to_s
-    send_message(id, :eval, form)
-    context = context(id)
+    send_message(id, "eval", form)
+    context = context(id.to_s)
     count   = context[:count] += 1;
     lambda do
       while (count > context[:results].size)
         sleep(RESULT_WAIT)
       end
-      context[:results][count - 1]
+      type, form = context[:results][count - 1]
+      case type
+      when "error"      then raise Error,     form
+      when "read-error" then raise ReadError, form
+      else form.split("\n")
+      end
     end
   end
 end

@@ -1,7 +1,7 @@
 (ns portal.server
   (:use lamina.core gloss.core aleph.tcp
         [clojure.stacktrace :only [root-cause]]
-        [clojure.string :only [join]])
+        [clojure.string :only [join split]])
   (:import (java.io PipedWriter PipedReader)
            (clojure.lang LineNumberingPushbackReader LispReader$ReaderException)))
 
@@ -10,32 +10,32 @@
    (prefix (string-integer :ascii :delimiters [":"]) inc dec)
    (string :utf-8 :delimiters [","])))
 
-(def line
-  (string :utf-8 :delimiters ["\r\n"]))
+(defn- read-seq [string]
+  (with-in-str string
+    (loop [forms []]
+      (let [form (read *in* false ::EOF)]
+        (if (= ::EOF form)
+          forms
+          (recur (conj forms form)))))))
 
 (defn decode-message [s]
-  (with-in-str (str s)
-    (let [id   (read)
-          type (read)]
-      (case type
-        :stdin [id type (.substring (slurp *in*) 1)]
-        :clear [id type nil]
-        (if (contains? #{:eval :echo} type)
-          (try [id type (read)]
-               (catch LispReader$ReaderException e
-                 [id :read-error (.getMessage (root-cause e))]))
-          [id :invalid type])))))
+  (let [[id type content] (split (str s) #"\s+" 3)]
+    (cond (#{"stdin" "clear"} type) [id type content]
+          (#{"eval"  "echo"}  type) (try [id type (read-seq content)]
+                                         (catch LispReader$ReaderException e
+                                           [id "read-error" (.getMessage (root-cause e))]))
+          :else [id "invalid" type])))
 
-(defn encode-message [id type form]
-  (if (contains? #{:stdout :stderr} type)
-    (join " " (concat (map pr-str [id type]) [form]))
-    (join " " (map pr-str [id type form]))))
+(defn encode-message [id type content]
+  (str id " " type " " (if (contains? #{"result" "echo"} type)
+                         (join (map prn-str content))
+                         content)))
 
-(defn eval-form [id form]
-  (try (encode-message id :result (eval form))
+(defn eval-forms [id forms]
+  (try (encode-message id "result" (map eval forms))
        (catch Exception e
          (let [e (root-cause e)]
-           (encode-message id :error [(.getName (class e)) (.getMessage e)])))))
+           (encode-message id "error" (str (.getName (class e)) ": " (.getMessage e)))))))
 
 (def *pipe* nil)
 
@@ -60,19 +60,19 @@
 (defn handler [ch client-info]
   (receive-all ch
     (fn [frame]
-      (let [[id type form] (decode-message frame)]
-        (prn id type form)
+      (let [[id type content] (decode-message frame)]
         (case type
-          :stdin (binding [*out* (get @(get-context id) #'*pipe*)]
-                   (println form))
-          :eval  (send (get-context id)
-                       (fn [bindings]
-                         (try (push-thread-bindings bindings)
-                              (enqueue ch (eval-form id form))
-                              (get-thread-bindings)
-                              (finally (pop-thread-bindings)))))
-          :clear (clear-context! id)
-          (enqueue ch (encode-message id type form)))))))
+          "stdin" (binding [*out* (get @(get-context id) #'*pipe*)]
+                    (print content)
+                    (flush))
+          "eval"  (send (get-context id)
+                        (fn [bindings]
+                          (try (push-thread-bindings bindings)
+                               (enqueue ch (eval-forms id content))
+                               (get-thread-bindings)
+                               (finally (pop-thread-bindings)))))
+          "clear" (clear-context! id)
+          (enqueue ch (encode-message id type content)))))))
 
 (defn start [port]
   (start-tcp-server handler {:port port, :frame netstring}))
