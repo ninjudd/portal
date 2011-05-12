@@ -75,4 +75,9 @@ class Portal
       end
     end
   end
+
+  def write(string, id = @id)
+    raise ProtocolError, "context id required to write to stdin" unless id
+    send_message(id, "stdin", string)
+  end
 end
