@@ -13,8 +13,7 @@
       (clojure.main/with-bindings
         (binding [*pipe* (PipedWriter.)]
           (binding [*in* (LineNumberingPushbackReader. (PipedReader. *pipe*))]
-            (in-ns (gensym 'portal))
-            (refer 'clojure.core)
+            (ns user)
             (agent (get-thread-bindings)))))))
 
 (defn get-context [id]
