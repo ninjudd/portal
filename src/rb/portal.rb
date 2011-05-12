@@ -38,7 +38,7 @@ class Portal
       raise ProtocolError.new("Message size must be an integer, found #{c.chr}") unless (?0..?9).include?(c)
       size << c
     end
-    message = @socket.read(size.to_i).split(/\s+/, 3)
+    message = @socket.read(size.to_i).split(/ /, 3)
     raise ProtocolError.new("Message must be followed by comma") unless @socket.getc == ?,
     message
   end

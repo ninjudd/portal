@@ -16,7 +16,7 @@
           (recur (conj forms form)))))))
 
 (defn decode-message [string]
-  (split (str string) #"\s+" 3))
+  (split (str string) #" " 3))
 
 (defn encode-message [id type data]
   (str id " " type " "
