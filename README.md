@@ -2,8 +2,8 @@ Portal is a unified REPL and command server for Clojure.
 
 # Protocol
 
-Portal uses netstrings to encode messages [^1]. This make client implementations as simple as
-possible. The format of an individual message is as follows:
+Portal uses netstrings to encode messages (thanks to James Reeves for this suggestion). This makes
+client implementations as simple as possible. The format of an individual message is as follows:
 
     id type data
 
@@ -38,5 +38,3 @@ For server responses `type` can be one of:
 * elisp (coming soon)
 * Haskell (coming soon)
 * Your favorite language (patches welcome...)
-
-[^1]: Thanks to James Reeves for this suggestion.
