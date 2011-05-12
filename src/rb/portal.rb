@@ -6,6 +6,7 @@ class Portal
   class ReadError     < Error; end
   class ProtocolError < Error; end
   RESULT_WAIT = 0.01
+  BLOCK_SIZE  = 1024
 
   def initialize(port, host = "localhost")
     @socket = TCPSocket.new(host, port)
@@ -14,11 +15,13 @@ class Portal
       while (message = receive_message)
         id, type, content = message
         if ["stdout", "stderr"].include?(type)
-          out = context(id)[type][1]
+          out = context(id)[type.to_sym][1]
           out.write(content)
           out.flush
-        else
+        elsif ["result", "error", "read-error"].include?(type)
           context(id)[:results] << [type, content]
+        else
+          raise ProtocolError, "unknown message type: #{type}"
         end
       end
     end
@@ -44,7 +47,7 @@ class Portal
   end
 
   def context(id)
-    @contexts[id] ||= {
+    @contexts[id.to_s] ||= {
       :results => [],
       :count   => 0,
       :stdout  => IO.pipe,
@@ -61,7 +64,7 @@ class Portal
 
   def eval(form, id = @id || rand)
     send_message(id, "eval", form)
-    context = context(id.to_s)
+    context = context(id)
     count   = context[:count] += 1;
     lambda do
       while (count > context[:results].size)
@@ -71,7 +74,7 @@ class Portal
       case type
       when "error"      then raise Error,     form
       when "read-error" then raise ReadError, form
-      else form.split("\n")
+      when "result"     then form.split("\n")
       end
     end
   end
@@ -79,5 +82,13 @@ class Portal
   def write(string, id = @id)
     raise ProtocolError, "context id required to write to stdin" unless id
     send_message(id, "stdin", string)
+  end
+
+  def tail(type, id = @id)
+    raise ProtocolError, "context id required to tail" unless id
+    while true
+      print(context(id)[type.to_sym][0].readpartial(BLOCK_SIZE))
+    end
+  rescue EOFError
   end
 end
