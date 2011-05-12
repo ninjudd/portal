@@ -51,6 +51,8 @@
                     (flush))
           "eval"  (with-context id
                     (enqueue-message ch id (read-eval data)))
+          "fork"  (swap! contexts
+                         #(assoc % data (get % id)))
           "clear" (clear-context! id)
           (enqueue-message ch id ["invalid" type]))))))
 
