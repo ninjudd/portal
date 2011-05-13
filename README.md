@@ -32,9 +32,9 @@ course, you can call commands asynchronously though by using unique ids.
 
 For client requests `TYPE` can be one of:
 
-    eval  - Evaluate the forms provided in DATA.
+    eval  - Evaluate the forms provided in DATA. Also subscribes you to *out* and *err* for ID.
     stdin - Write the string provided in DATA to *in*.
-    clear - Clear the context for ID.
+    close - Close the context for ID and unsubscribe from *out* and *err*.
     fork  - Associate the context for ID with the id provided in DATA.
 
 For server responses `TYPE` can be one of:

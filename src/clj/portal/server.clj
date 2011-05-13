@@ -35,7 +35,7 @@
                     (dissoc (get-thread-bindings) #'*agent*)
                     (finally (pop-thread-bindings)))))))
 
-(defn clear-context [contexts channel id]
+(defn close-context [contexts channel id]
   (let [contexts (vary-meta contexts update id disj channel)]
     (if (empty? (get (meta contexts) id))
       (dissoc contexts id)
@@ -61,7 +61,7 @@
                   (enqueue channel (apply vector id (read-eval-print data))))
         "fork"  (swap! contexts
                        #(assoc % data (get % id)))
-        "clear" (swap! contexts clear-context channel id)
+        "close" (swap! contexts close-context channel id)
         (enqueue channel [id "invalid" type])))))
 
 (defn start [port]
