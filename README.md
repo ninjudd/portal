@@ -51,6 +51,7 @@ For server responses `TYPE` can be one of:
 * Clojure (coming soon)
 * elisp (coming soon)
 * Haskell (coming soon)
+* Javascript (coming soon)
 * Your favorite language (patches welcome...)
 
 <hr>
