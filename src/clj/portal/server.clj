@@ -41,28 +41,28 @@
       (dissoc contexts id)
       contexts)))
 
-(defn read-eval [data]
+(defn read-eval-print [data]
   (try (let [forms (read-seq data)]
-         (try ["result" (doall (map eval forms))]
+         (try ["result" (apply str (map (comp prn-str eval) forms))]
               (catch Exception e
-                ["error" (root-cause e)])))
+                (let [e (root-cause e)]
+                  ["error" (str (.getName (class e)) " " (.getMessage e))]))))
        (catch LispReader$ReaderException e
-         ["read-error" (root-cause e)])))
+         ["read-error" (.getMessage (root-cause e))])))
 
 (defn handler [channel client-info]
   (receive-all channel
-    (fn [frame]
-      (let [[id type data] (decode-message frame)]
-        (case type
-          "stdin" (binding [*out* (get @(get-context id) #'*pipe*)]
-                    (print data)
-                    (flush))
-          "eval"  (with-context channel id
-                    (enqueue-message channel id (read-eval data)))
-          "fork"  (swap! contexts
-                         #(assoc % data (get % id)))
-          "clear" (swap! contexts clear-context channel id)
-          (enqueue-message channel id ["invalid" type]))))))
+    (fn [[id type data]]
+      (case type
+        "stdin" (binding [*out* (get @(get-context id) #'*pipe*)]
+                  (print data)
+                  (flush))
+        "eval"  (with-context channel id
+                  (enqueue channel (apply vector id (read-eval-print data))))
+        "fork"  (swap! contexts
+                       #(assoc % data (get % id)))
+        "clear" (swap! contexts clear-context channel id)
+        (enqueue channel [id "invalid" type])))))
 
 (defn start [port]
-  (start-tcp-server handler {:port port, :frame netstring}))
+  (start-tcp-server handler {:port port, :frame message}))

@@ -26,4 +26,4 @@
        (flush []
          (let [string (join (channel-seq data))]
            (doseq [ch (channels)]
-             (enqueue-message ch id [type string]))))))))
+             (enqueue ch [id type string]))))))))
