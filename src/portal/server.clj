@@ -41,13 +41,21 @@
       (dissoc contexts id)
       contexts)))
 
+(defn prn-val [val]
+  (set! *3 *2)
+  (set! *2 *1)
+  (set! *1 val)
+  (prn-str val))
+
 (defn read-eval-print [data]
   (try (let [forms (read-seq data)]
-         (try ["result" (apply str (map (comp prn-str eval) forms))]
+         (try ["result" (apply str (map (comp prn-val eval) forms))]
               (catch Exception e
+                (set! *e e)
                 (let [e (root-cause e)]
                   ["error" (str (.getName (class e)) " " (.getMessage e))]))))
        (catch LispReader$ReaderException e
+         (set! *e e)
          ["read-error" (.getMessage (root-cause e))])))
 
 (defn handler [channel client-info]
