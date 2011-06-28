@@ -45,6 +45,19 @@ For server responses `TYPE` can be one of:
     stdout     - The string in DATA was printed to *out* during evaluation.
     stderr     - The string in DATA was printed to *err* during evaluation.
 
+# Example
+
+`cake repl`:
+
+    (require 'portal.server)
+    (portal.server/start 9999)
+
+`cd client/ruby; irb`:
+
+    require 'portal'
+    p = Portal.new(9999)
+    p.eval("(+ 1 2 3)").call
+
 # Client Libraries
 
 * Ruby
