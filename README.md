@@ -57,7 +57,7 @@ Start a client in `irb`:
     $LOAD_PATH.unshift 'client/ruby'; require 'portal'
     p = Portal.new(9999)
 
-Now, in the ruby client you can do all kinds of awesome Clojure stuff.
+Now, in the ruby client you can do all kinds of awesome Clojure stuff!
 
 Eval a form:
 
