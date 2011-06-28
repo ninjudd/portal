@@ -57,20 +57,36 @@ Start a client in `irb`:
     $LOAD_PATH.unshift 'client/ruby'; require 'portal'
     p = Portal.new(9999)
 
-    # eval
+Now, in the ruby client you can do all kinds of awesome Clojure stuff.
+
+Eval a form:
+
     p.eval("(+ 1 2 3)").call
     # => ["6"]
 
-    # stdout
+Print something to stdout:
+
     Thread.new { p.tail(:stdout, 1) }
     p.eval("(prn (rand))", 1).call
     # 0.4511989887798975
     # => ["nil"]
 
-    # stdin
+Read something from stdin:
+
     p.write("[1 2 3]", 1)
     p.eval("(read)", 1).call
     # => ["[1 2 3]"]
+
+Do some stuff in a specific context:
+
+    p.with_context(2) do
+      p.eval("(ns foo)")
+      p.eval("(def bar 1)")
+      p.eval("bar")
+    end.call
+    # => ["1"]
+    p.eval("bar")
+    # Portal::Error: java.lang.Exception Unable to resolve symbol: bar in this context
 
 # Client Libraries
 
