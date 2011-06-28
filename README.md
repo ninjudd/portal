@@ -47,16 +47,30 @@ For server responses `TYPE` can be one of:
 
 # Example
 
-`cake repl`:
+Start the server in `cake repl`:
 
     (require 'portal.server)
     (portal.server/start 9999)
 
-`cd client/ruby; irb`:
+Start a client in `irb`:
 
-    require 'portal'
+    $LOAD_PATH.unshift 'client/ruby'; require 'portal'
     p = Portal.new(9999)
+
+    # eval
     p.eval("(+ 1 2 3)").call
+    # => ["6"]
+
+    # stdout
+    Thread.new { p.tail(:stdout, 1) }
+    p.eval("(prn (rand))", 1).call
+    # 0.4511989887798975
+    # => ["nil"]
+
+    # stdin
+    p.write("[1 2 3]", 1)
+    p.eval("(read)", 1).call
+    # => ["[1 2 3]"]
 
 # Client Libraries
 
