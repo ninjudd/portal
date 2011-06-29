@@ -1,7 +1,7 @@
 (ns portal.server
   (:use portal.core portal.io lamina.core aleph.tcp
         [clojure.stacktrace :only [root-cause]]
-        [useful :only [update conj-set]])
+        [useful [map :only [update]] [utils :only [conj-set]]])
   (:import (clojure.lang LispReader$ReaderException)))
 
 (def contexts (atom {}))
