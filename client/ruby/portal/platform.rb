@@ -2,12 +2,20 @@ if RUBY_PLATFORM =~ /(mingw|mswin)(32|64)$/
   require 'rubygems'
   require 'win32/process'
 
+  TERM = 1
+  KILL = 'KILL'
+  PATH_SEP = ';'
+
   USER_HOME = File.expand_path(ENV['HOMEDRIVE'] + ENV['HOMEPATH'])
 
   def daemon(cmd)
     Process.create(:app_name => cmd.join(' ')).process_id
   end
 else
+  TERM = 'TERM'
+  KILL = 'KILL'
+  PATH_SEP = ':'
+
   USER_HOME = File.expand_path(ENV['HOME'])
   class Process::Error; end
 

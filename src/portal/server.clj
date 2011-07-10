@@ -41,22 +41,30 @@
       (dissoc contexts id)
       contexts)))
 
-(defn prn-val [val]
-  (set! *3 *2)
-  (set! *2 *1)
-  (set! *1 val)
-  (prn-str val))
+(defn read-eval-print []
+  (try (let [form (read *in* false ::EOF)]
+         (when (not= ::EOF form)
+           (try (let [val (eval form)]
+                  (set! *3 *2)
+                  (set! *2 *1)
+                  (set! *1 val)
+                  (prn-str val))
+                (catch Exception e
+                  (set! *e e)
+                  (let [e (root-cause e)]
+                    {:error (str (.getName (class e)) " " (.getMessage e))})))))
+    (catch LispReader$ReaderException e
+      (set! *e e)
+      {:read-error (.getMessage (root-cause e))})))
 
-(defn read-eval-print [data]
-  (try (let [forms (read-seq data)]
-         (try ["result" (apply str (map (comp prn-val eval) forms))]
-              (catch Exception e
-                (set! *e e)
-                (let [e (root-cause e)]
-                  ["error" (str (.getName (class e)) " " (.getMessage e))]))))
-       (catch LispReader$ReaderException e
-         (set! *e e)
-         ["read-error" (.getMessage (root-cause e))])))
+(defn read-eval-print-loop [string]
+  (with-in-str string
+    (let [[vals [{:keys [error read-error]}]]
+          (split-with string? (repeatedly read-eval-print))
+          result (apply str vals)]
+      (cond error      ["error"      (str result error)]
+            read-error ["read-error" (str result read-error)]
+            :else      ["result"     result]))))
 
 (defn handler [channel client-info]
   (receive-all channel
@@ -66,7 +74,7 @@
                   (print data)
                   (flush))
         "eval"  (with-context channel id
-                  (enqueue channel (apply vector id (read-eval-print data))))
+                  (enqueue channel (apply vector id (read-eval-print-loop data))))
         "fork"  (swap! contexts
                        #(assoc % data (get % id)))
         "close" (swap! contexts close-context channel id)

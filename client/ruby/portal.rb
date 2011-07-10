@@ -1,9 +1,10 @@
 require 'socket'
+require 'portal/platform'
+require 'portal/jvm'
 require 'pp'
 
 class Portal
   class Error < StandardError; end
-  class ReadError     < Error; end
   class ProtocolError < Error; end
   RESULT_WAIT = 0.01
   BLOCK_SIZE  = 1024
@@ -71,10 +72,12 @@ class Portal
         sleep(RESULT_WAIT)
       end
       type, form = context[:results][count - 1]
-      case type
-      when "error"      then raise Error,     form
-      when "read-error" then raise ReadError, form
-      when "result"     then form.split("\n")
+      if type == "result"
+        form.split("\n")
+      else
+        vals = form.split("\n")
+        vals[-1] = {type.to_sym => vals[-1]}
+        vals
       end
     end
   end
