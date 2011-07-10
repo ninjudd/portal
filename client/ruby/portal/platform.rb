@@ -32,3 +32,19 @@ else
     pid
   end
 end
+
+begin
+  require 'readline'
+  READLINE = Readline.respond_to?(:emacs_editing_mode) ? :libedit : true
+rescue LoadError
+  READLINE = false
+  module Readline
+    HISTORY = []
+    attr_accessor :basic_word_break_characters, :completion_proc
+    def readline(prompt)
+      $stdout.print_flush(prompt)
+      $stdin.gets
+    end
+    extend Readline
+  end
+end

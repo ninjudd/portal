@@ -1,6 +1,7 @@
 require 'socket'
 require 'portal/platform'
 require 'portal/jvm'
+require 'portal/interop'
 require 'pp'
 
 class Portal
