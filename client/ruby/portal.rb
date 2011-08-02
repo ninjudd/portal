@@ -7,7 +7,6 @@ require 'pp'
 class Portal
   class Error < StandardError; end
   class ProtocolError < Error; end
-  RESULT_WAIT = 0.01
   BLOCK_SIZE  = 1024
 
   def initialize(port, host = "localhost")
