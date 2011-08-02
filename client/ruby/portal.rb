@@ -15,12 +15,13 @@ class Portal
     Thread.new do
       while (message = receive_message)
         id, type, content = message
+        context = context(id)
         if ["stdout", "stderr"].include?(type)
-          out = context(id)[type.to_sym][1]
+          out = context[type.to_sym][1]
           out.write(content)
           out.flush
         elsif ["result", "error", "read-error"].include?(type)
-          context(id)[:results] << [type, content]
+          context[:results][context[:count]] = [type, content]
         else
           raise ProtocolError, "unknown message type: #{type}"
         end
