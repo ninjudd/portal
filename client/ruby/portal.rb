@@ -50,7 +50,7 @@ class Portal
 
   def context(id)
     @contexts[id.to_s] ||= {
-      :results => [],
+      :results => {},
       :count   => 0,
       :stdout  => IO.pipe,
       :stderr  => IO.pipe
@@ -69,17 +69,10 @@ class Portal
     context = context(id)
     count   = context[:count] += 1;
     lambda do
-      while (count > context[:results].size)
-        sleep(RESULT_WAIT)
-      end
-      type, form = context[:results][count - 1]
-      if type == "result"
-        form.split("\n")
-      else
-        vals = form.split("\n")
-        vals[-1] = {type.to_sym => vals[-1]}
-        vals
-      end
+      return unless type
+      vals = form.split("\n")
+      vals[-1] = {type.to_sym => vals[-1]} unless type == "result"
+      vals
     end
   end
 
