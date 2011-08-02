@@ -69,6 +69,7 @@ class Portal
     context = context(id)
     count   = context[:count] += 1;
     lambda do
+      type, form = context[:results].delete(count)
       return unless type
       vals = form.split("\n")
       vals[-1] = {type.to_sym => vals[-1]} unless type == "result"
