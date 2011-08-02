@@ -21,7 +21,8 @@ class Portal
           out.write(content)
           out.flush
         elsif ["result", "error", "read-error"].include?(type)
-          context[:results][context[:count]] = [type, content]
+          count = context[:result_count] += 1;
+          context[:results][count] = [type, content]
         else
           raise ProtocolError, "unknown message type: #{type}"
         end
@@ -50,10 +51,11 @@ class Portal
 
   def context(id)
     @contexts[id.to_s] ||= {
-      :results => {},
-      :count   => 0,
-      :stdout  => IO.pipe,
-      :stderr  => IO.pipe
+      :results      => {},
+      :eval_count   => 0,
+      :result_count => 0,
+      :stdout       => IO.pipe,
+      :stderr       => IO.pipe
     }
   end
 
@@ -67,7 +69,7 @@ class Portal
   def eval(form, id = @id || rand)
     send_message(id, "eval", form)
     context = context(id)
-    count   = context[:count] += 1;
+    count   = context[:eval_count] += 1;
     lambda do
       type, form = context[:results].delete(count)
       return unless type
