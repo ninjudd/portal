@@ -9,20 +9,26 @@
 (defn context
   "Look up a context. If no context exists, create one."
   [id]
-  (or (@contexts id)
-      (get
-       (swap! contexts assoc id
-              {:results []
-               :count 0
-               :stdout []
-               :stderr []})
-       id)))
+  (let [id (str id)]
+    (or (@contexts id)
+        (get
+         (swap! contexts assoc id
+                {:results {}
+                 :eval 0
+                 :result 0
+                 :callbacks {}
+                 :stdout []
+                 :stderr []})
+         id))))
 
 (defn update-context
   "Update a context."
   [id key f & args]
-  (context id)
-  (swap! contexts update-in [id key] (fn [old] (apply f old args))))
+  (let [id (str id)]
+    (context id)
+    (get-in
+     (swap! contexts update-in [id key] (fn [old] (apply f old args)))
+     [id key])))
 
 (defn netstring
   "Create a netstring."
@@ -31,11 +37,12 @@
 (defn parse-message
   "Parse a Portal message."
   [message]
-  (let [message (second (.split (apply str (butlast (str message)))":"))
-        [id type content] (.split message " ")]
+  (let [message (second (split (string/join (butlast (str message))) #":" 2))
+        [id type content] (split message #" " 3)]
+    (prn "message:" message)
     {:type (keyword type)
      :id id
-     :content content}))
+     :content (string/join " " content)}))
 
 (defn send-message
   "Send a portal message."
@@ -44,9 +51,12 @@
 
 (defn eval
   "Evaluate code."
-  ([sock form] (eval sock form (rand-int 9999999999999999)))
-  ([sock form id & [callback]]
-     (send-message sock id "eval" form)))
+  ([sock form callback] (eval sock form (rand-int 9999999999999999) callback))
+  ([sock form id callback]
+     (send-message sock id "eval" form)
+     (update-context id :callbacks assoc
+                     (update-context id :eval inc)
+                     callback)))
 
 (defn tail
   "Tail stdout or stderr from a context."
@@ -57,18 +67,27 @@
     (cond (#{:stdout :stderr} type)
           (update-context id type conj content)
           (#{:result :error :read-error} type)
-          (update-context id :results conj [type content]))
-    (prn data)))
+          (let [count (update-context id :result inc)]
+            #_(prn @contexts)
+            ((get-in (context id) [:callbacks count])
+             (let [vals (butlast (.split content "\n"))]
+               (if (= type :result)
+                 vals
+                 (conj (butlast vals) {type (last vals)}))))))
+    #_(prn data)))
 
 (defn connect
   ([port] (connect port "localhost"))
   ([port host]
-     (let [sock (.createConnection net port host)]
-       (.on sock "data" on-data))))
+     (doto (.createConnection net port host)
+       (.on "data" on-data))))
+
+(defn test-fn [data]
+  (prn "result" data))
 
 (defn -main [& args]
   (let [sock (connect 1337 "localhost")]
-    (eval sock "(range 1000)")
-    (eval sock "(+ 5 5)")))
+    (eval sock "(+ 1 2 3 4 5)" test-fn)
+    (eval sock "(slurp \"http://lazybot.org\")" test-fn)))
 
 (set! *main-cli-fn* -main)
