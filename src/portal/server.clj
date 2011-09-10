@@ -1,7 +1,6 @@
 (ns portal.server
   (:use portal.core portal.io lamina.core aleph.tcp
-        [clojure.stacktrace :only [root-cause]]
-        [useful.map :only [update]]))
+        [clojure.stacktrace :only [root-cause]])
   (:import (clojure.lang LispReader$ReaderException)))
 
 (def contexts (atom {}))
@@ -22,12 +21,12 @@
 
 (defn get-context [id]
   (or (get @contexts id)
-      (get (swap! contexts update id gen-context id) id)))
+      (get (swap! contexts update-in [id] gen-context id) id)))
 
 (defmacro with-context
   "Execute the given forms in the context associated with id."
   [channel id & forms]
-  `(do (swap! contexts vary-meta update ~id (fnil conj #{}) ~channel)
+  `(do (swap! contexts vary-meta update-in [~id] (fnil conj #{}) ~channel)
        (send (get-context ~id)
              (fn [bindings#]
                (try (push-thread-bindings bindings#)
@@ -36,7 +35,7 @@
                     (finally (pop-thread-bindings)))))))
 
 (defn close-context [contexts channel id]
-  (let [contexts (vary-meta contexts update id disj channel)]
+  (let [contexts (vary-meta contexts update-in [id] disj channel)]
     (if (empty? (get (meta contexts) id))
       (dissoc contexts id)
       contexts)))
